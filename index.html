@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>典陸語音錄製</title>
+<style>
+  :root { --ink:#1d1d1b; --mute:#77736b; --line:#e2ddd3; --bg:#faf8f4; --card:#fff; --gold:#a8873e; --red:#c0392b; --ok:#2e7d4f; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"PingFang TC","Microsoft JhengHei","Noto Sans TC",sans-serif; line-height:1.6; }
+  .wrap { max-width:860px; margin:0 auto; padding:28px 20px 60px; }
+  h1 { font-size:20px; margin:0 0 4px; letter-spacing:.08em; }
+  .sub { color:var(--mute); font-size:14px; margin-bottom:22px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:24px; margin-bottom:16px; }
+  label { display:block; font-size:14px; color:var(--mute); margin:14px 0 6px; }
+  input[type=text], select { width:100%; font-size:18px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); font-family:inherit; }
+  button { font-family:inherit; font-size:16px; padding:11px 20px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.primary { background:var(--ink); color:#fff; border-color:var(--ink); }
+  button.rec { background:var(--red); color:#fff; border-color:var(--red); min-width:150px; font-size:18px; }
+  button.rec.on { background:#fff; color:var(--red); }
+  ul.rules { margin:6px 0 0; padding-left:20px; font-size:15px; }
+  ul.rules li { margin:3px 0; }
+  .bar { height:6px; background:var(--line); border-radius:3px; overflow:hidden; margin-bottom:8px; }
+  .bar > i { display:block; height:100%; background:var(--gold); width:0; transition:width .2s; }
+  .meta { display:flex; justify-content:space-between; font-size:14px; color:var(--mute); }
+  .sid { font-size:15px; color:var(--gold); font-weight:700; letter-spacing:.1em; }
+  .hint { display:inline-block; font-size:14px; color:var(--mute); margin-left:10px; }
+  .text { font-size:27px; line-height:1.85; margin:14px 0 6px; min-height:150px; }
+  .ctrl { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:16px; }
+  .meter { height:10px; background:var(--line); border-radius:5px; overflow:hidden; margin-top:18px; position:relative; }
+  .meter > i { display:block; height:100%; width:0; background:var(--ok); }
+  .meter > b { position:absolute; top:0; bottom:0; left:25%; width:50%; border-left:1px dashed #999; border-right:1px dashed #999; }
+  .meterlab { font-size:12px; color:var(--mute); margin-top:4px; }
+  .msg { font-size:15px; margin-top:12px; min-height:24px; }
+  .msg.warn { color:var(--red); } .msg.ok { color:var(--ok); }
+  .keys { font-size:13px; color:var(--mute); margin-top:14px; }
+  kbd { border:1px solid var(--line); border-radius:4px; padding:1px 6px; background:#fff; font-size:12px; }
+  .hide { display:none; }
+  .timer { font-variant-numeric:tabular-nums; color:var(--mute); font-size:15px; }
+  table { border-collapse:collapse; width:100%; font-size:14px; margin-top:10px; }
+  td, th { border-bottom:1px solid var(--line); padding:5px 8px; text-align:left; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>典陸語音錄製</h1>
+  <div class="sub">全部約 15 分鐘。請用電腦操作。錄完會打包成一個檔案，最後一步是上傳到指定的雲端資料夾。</div>
+
+  <!-- 開始畫面 -->
+  <div id="scrStart" class="card">
+    <label for="name">姓名</label>
+    <input type="text" id="name" placeholder="請輸入全名" autocomplete="off">
+    <label for="stage">教學藝名（選填）</label>
+    <input type="text" id="stage" placeholder="學生平常稱呼你的名字，沒有就留空" autocomplete="off">
+    <label for="mic">麥克風</label>
+    <select id="mic"><option value="">（按「測試麥克風」後可選擇）</option></select>
+    <div class="ctrl"><button id="btnMic">測試麥克風</button><span id="micInfo" class="timer"></span></div>
+    <div class="meter"><i id="meter0"></i><b></b></div>
+    <div class="meterlab">用平常講話的音量說幾句話，音量條大多落在兩條虛線之間即可。</div>
+    <label>錄音前請確認</label>
+    <ul class="rules">
+      <li>安靜的小房間，關冷氣、風扇，手機靜音。</li>
+      <li>麥克風離嘴巴 15 到 20 公分，全程不要移動。</li>
+      <li>用平常上課、對一個人解釋事情的語氣，不要朗讀。</li>
+      <li>讀音照你平常的講法，不必改成字典音。</li>
+      <li>唸錯就按「重錄」，整段重唸。</li>
+      <li>中途不要關閉或重新整理這個頁面，錄音會消失。</li>
+    </ul>
+    <div class="ctrl"><button id="btnStart" class="primary" disabled>開始錄音</button><span id="startMsg" class="msg"></span></div>
+  </div>
+
+  <!-- 錄音畫面 -->
+  <div id="scrRec" class="card hide">
+    <div class="bar"><i id="prog"></i></div>
+    <div class="meta"><span id="progTxt"></span><span id="who"></span></div>
+    <div style="margin-top:18px"><span class="sid" id="sid"></span><span class="hint" id="hint"></span></div>
+    <div class="text" id="text"></div>
+    <div class="meter"><i id="meter1"></i><b></b></div>
+    <div class="ctrl">
+      <button id="btnRec" class="rec">● 開始錄</button>
+      <span class="timer" id="timer">0.0 秒</span>
+      <button id="btnPlay" disabled>試聽</button>
+      <button id="btnPrev">上一句</button>
+      <button id="btnNext" class="primary" disabled>下一句</button>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="keys"><kbd>空白鍵</kbd> 開始／停止　<kbd>P</kbd> 試聽　<kbd>Enter</kbd> 下一句</div>
+    <audio id="player" class="hide"></audio>
+  </div>
+
+  <!-- 完成畫面 -->
+  <div id="scrDone" class="card hide">
+    <div class="sid">全部錄完</div>
+    <p id="doneTxt"></p>
+    <div class="ctrl">
+      <button id="btnExport" class="primary">下載錄音檔</button>
+      <button id="btnBack">回去重錄某一句</button>
+    </div>
+    <div class="msg" id="doneMsg"></div>
+    <div id="upBox" class="hide" style="margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--bg)">
+      <div style="font-weight:700;margin-bottom:6px">最後一步：上傳</div>
+      <div style="font-size:15px;margin-bottom:12px">請把剛才下載的 <b id="upName"></b> 上傳到下面的雲端資料夾。打開後把檔案拖進去即可，上傳完成才算結束。</div>
+      <a id="upLink" href="https://drive.google.com/drive/folders/1SbIuNQTS_XmVuFmvrrWmj2WPU6qtb19H?usp=sharing" target="_blank" rel="noopener"><button class="primary" type="button">打開上傳資料夾</button></a>
+      <div style="font-size:13px;color:var(--mute);margin-top:10px;word-break:break-all">https://drive.google.com/drive/folders/1SbIuNQTS_XmVuFmvrrWmj2WPU6qtb19H?usp=sharing</div>
+    </div>
+    <table id="sum"></table>
+  </div>
+</div>
+
+<script>
+const SCRIPT = [{"id": "A01", "hint": "講解：平穩、清楚", "text": "先看一個生活中的例子。把一杯冰水放在桌上，過幾分鐘，杯子外面就會出現一層小水珠。這些水不是從杯子裡滲出來的，而是空氣中的水蒸氣遇冷之後，凝結在杯子表面。"}, {"id": "A02", "hint": "講解：平穩、清楚", "text": "解這一題之前，先不要急著列式子。把題目再讀一次，圈出已知的條件，還有最後要求的是什麼。很多人算錯，不是因為不會算，而是一開始就把題目看錯了。"}, {"id": "A03", "hint": "講解：平穩、清楚", "text": "背單字最沒有效率的方法，就是一個字一個字硬背。比較好的做法，是把它放回句子裡，知道它在什麼情境下會出現，這樣才記得久。"}, {"id": "A04", "hint": "講解：平穩、清楚", "text": "考完試之後，最重要的不是看分數，而是把錯的題目分成三類：觀念不懂、粗心算錯，還有時間不夠。每一類的處理方式都不一樣。"}, {"id": "A05", "hint": "對家長說話：溫和、稍慢", "text": "每個孩子開始認真的時間點都不一樣。有的人很早就清楚自己要什麼，有的人要晚一點才想通。我們能做的，是在那一天來之前，先陪他把基礎打穩。"}, {"id": "A06", "hint": "對家長說話：溫和、稍慢", "text": "家長最常問的一個問題是：孩子現在的成績，還來得及嗎？我通常會說，先不要看排名，先看他哪些觀念是真的懂，哪些只是背起來而已。"}, {"id": "A07", "hint": "對家長說話：溫和、稍慢", "text": "補習不是把學校的課再上一遍。我們希望孩子在這裡學到的，是怎麼整理重點、怎麼安排時間，還有遇到不會的題目，要怎麼找出自己卡在哪裡。"}, {"id": "A08", "hint": "宣傳與叮嚀：有精神", "text": "各位同學注意！下星期六早上九點，站前校有一場免費的升學講座，名額有限，記得提早報名喔！"}, {"id": "A09", "hint": "宣傳與叮嚀：有精神", "text": "暑假就要到了，你準備好了嗎？這個夏天，我們幫你把最重要的觀念一次整理清楚，開學直接領先！"}, {"id": "A10", "hint": "宣傳與叮嚀：有精神", "text": "今天的課就上到這裡。回家之後，記得把講義第三頁的練習題做完。有問題的話，下次上課前可以直接來問老師。"}, {"id": "B01", "hint": "", "text": "這個星期的研究主題，是液體的質量和體積。期中考的成績出來之後，我們會比較每個學期的進步幅度。"}, {"id": "B02", "hint": "", "text": "用顯微鏡觀察的時候，要小心危險的化學藥品。暫時不用的器材先放回原位，垃圾記得分類。企業參訪當天，請攜帶學生證。"}, {"id": "B03", "hint": "", "text": "法國、俄羅斯和亞洲各國的教育制度，其實都不太一樣。突然要比較，還真的不知道從哪裡說起。"}, {"id": "B04", "hint": "", "text": "這位學生很聰明，也很喜歡問問題。他告訴朋友，只要把事情的道理弄清楚，就不會覺得麻煩。老師，這個東西是什麼意思？我們什麼時候要交？"}, {"id": "B05", "hint": "", "text": "這次的數學測驗，總共有四十四題選擇題，其中十四題是送分題。做錯的同學，自己再仔細算一次。認真和專注，是最容易被忽略的差別。"}, {"id": "B06", "hint": "", "text": "新竹的風很大，花蓮的海很藍。南部的夏天很熱，冷氣開整天，電費當然也跟著增加。請問您貴姓？是陳先生、程先生、翁先生，還是曾先生？"}, {"id": "B07", "hint": "", "text": "這次全班平均七十八點五分，比上次進步了百分之十二。第三題的答案是二分之一，第十五題是負零點二五。"}, {"id": "B08", "hint": "", "text": "光速大約是每秒三十萬公里，水的沸點是攝氏一百度，圓周率大約是三點一四一六。二零二六年十一月二十號，下午三點三十分。"}, {"id": "B09", "hint": "", "text": "上課前，請先用手機掃 QR code，下載今天的 PDF 講義。有問題可以在 LINE 群組發問，或是寄 Email 給老師。"}, {"id": "B10", "hint": "", "text": "這支影片會放在 YouTube 和 Google Classroom。DNA、pH 值、Wi-Fi、App、AI，這些詞我們平常都直接講英文。"}, {"id": "B11", "hint": "", "text": "典陸教育集團，Danlu Education Group。升學的事，典陸解決。專業升國中、升高中、升大學。Danlu Kids Space。"}, {"id": "B12", "hint": "", "text": "新營站前校、台南站前旗艦校、後甲本願校、復興旗艦校、建興資優中心、永康晴光校、陳易安平校、高雄陽明校、文元曙光校、文元新月校、南科木風校、東橋元象校。"}, {"id": "B13", "hint": "", "text": "國文、英文、數學、物理、化學、生物、地球科學、歷史、地理、公民。會考、學測、分科測驗、段考、模擬考、資優班、總複習。"}, {"id": "B14", "hint": "", "text": "一元二次方程式、畢氏定理、等差數列、牛頓第二運動定律、氧化還原反應、光合作用、板塊運動。"}, {"id": "B15", "hint": "", "text": "重要的事情要重新確認。音樂讓人快樂。數學老師數了數人數。他長大以後，頭髮留得很長。他還沒把書還給圖書館。老師教我們，教學要有耐心。"}, {"id": "B16", "hint": "", "text": "對啊，就是這樣。好喔，那我們繼續。你看，是不是很簡單呢？沒關係啦，再試一次吧。欸，等一下，這裡要特別注意喔。"}, {"id": "B17", "hint": "", "text": "如果你問我，國中三年最應該養成的習慣是什麼，我會說三件事：第一，每天固定複習；第二，不懂就問；第三，錯過的題目，一定要再做一遍。"}, {"id": "C01", "hint": "講解的語氣，一次唸完", "text": "很多同學以為，成績不好是因為不夠聰明，其實大部分的問題出在方法。上課聽懂了，不代表自己會算；真正的差別，在於回家之後有沒有再練一次。這個星期，我們先從每天二十分鐘開始，把今天的 PDF 講義看完，再做三題練習。有問題，歡迎到典陸來找老師。"}, {"id": "D01", "hint": "平穩：課件旁白的語氣", "text": "歡迎來到典陸教育，今天我們要一起解決一個很多人都會卡住的問題。"}, {"id": "D02", "hint": "溫和：對家長說話，放慢一點", "text": "歡迎來到典陸教育，今天我們要一起解決一個很多人都會卡住的問題。"}, {"id": "D03", "hint": "有精神：招生影片開場", "text": "歡迎來到典陸教育，今天我們要一起解決一個很多人都會卡住的問題。"}, {"id": "D04", "hint": "提問：真的在問對方", "text": "你有沒有想過，為什麼花同樣的時間，有人讀得又快又好？"}, {"id": "D05", "hint": "強調：重點放慢、加重", "text": "記住，這一題的關鍵只有一個：單位一定要先換算。"}];
+const CONSENT = "我是{name}。我同意典陸教育集團使用我這次的錄音，建立我的聲音模型，並用它合成典陸教學影片與課件的旁白。我了解合成出來的聲音，聽起來會像我本人。";
+const ROOM_SEC = 10;
+const VERSION = "1.3";
+
+const $ = id => document.getElementById(id);
+let items = [], idx = 0, recs = {}, speaker = "", stageName = "";
+let stream = null, ctx = null, proc = null, recording = false, chunks = [], recStart = 0, roomTimer = null, lvl = 0;
+
+function buildItems(name) {
+  items = [];
+  if (CONSENT) items.push({ id: "consent", label: "授權聲明", hint: "請照唸，這段會作為同意紀錄", text: CONSENT.replace("{name}", name) });
+  items.push({ id: "room", label: "環境音", hint: "按下開始後保持安靜 " + ROOM_SEC + " 秒，會自動停止", text: "這一段不用說話。\n請保持安靜，不要移動，等它自動結束。", room: true });
+  for (const s of SCRIPT) items.push({ id: s.id, label: s.id, hint: s.hint || "", text: s.text });
+}
+
+async function openMic() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  const dev = $("mic").value;
+  const audio = { channelCount: 1, sampleRate: 48000, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+  if (dev) audio.deviceId = { exact: dev };
+  stream = await navigator.mediaDevices.getUserMedia({ audio });
+  if (!ctx) { const AC = window.AudioContext || window.webkitAudioContext; try { ctx = new AC({ sampleRate: 48000 }); } catch (e) { ctx = new AC(); } }
+  if (ctx.state === "suspended") await ctx.resume();
+  if (proc) proc.disconnect();
+  const src = ctx.createMediaStreamSource(stream);
+  proc = ctx.createScriptProcessor(4096, 1, 1);
+  const mute = ctx.createGain(); mute.gain.value = 0;
+  src.connect(proc); proc.connect(mute); mute.connect(ctx.destination);
+  proc.onaudioprocess = e => {
+    const d = e.inputBuffer.getChannelData(0);
+    let pk = 0; for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > pk) pk = a; }
+    lvl = Math.max(pk, lvl * 0.85);
+    if (recording) chunks.push(new Float32Array(d));
+  };
+  const cur = stream.getAudioTracks()[0];
+  const list = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput");
+  $("mic").innerHTML = list.map(d => `<option value="${d.deviceId}">${d.label || "麥克風"}</option>`).join("");
+  const st = cur.getSettings(); if (st.deviceId) $("mic").value = st.deviceId;
+  $("micInfo").textContent = Math.round(ctx.sampleRate / 1000) + " kHz";
+  checkStart();
+}
+
+function drawMeter() {
+  const db = lvl > 0 ? 20 * Math.log10(lvl) : -60;           // -60..0 dBFS
+  const w = Math.max(0, Math.min(100, (db + 48) / 48 * 100)); // -48..0 → 0..100%
+  for (const id of ["meter0", "meter1"]) { const m = $(id); m.style.width = w + "%"; m.style.background = lvl >= 0.98 ? "var(--red)" : "var(--ok)"; }
+  if (recording) $("timer").textContent = ((performance.now() - recStart) / 1000).toFixed(1) + " 秒";
+  requestAnimationFrame(drawMeter);
+}
+
+function checkStart() { $("btnStart").disabled = !(stream && $("name").value.trim()); }
+
+function encodeWav(f32, rate) {
+  const n = f32.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) { const s = Math.max(-1, Math.min(1, f32[i])); v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true); }
+  return new Uint8Array(buf);
+}
+
+function startRec() {
+  if (recording) return;
+  $("player").pause();
+  chunks = []; recording = true; recStart = performance.now();
+  $("btnRec").textContent = "■ 停止"; $("btnRec").classList.add("on");
+  $("btnPlay").disabled = $("btnNext").disabled = $("btnPrev").disabled = true;
+  setMsg("錄音中…");
+  if (items[idx].room) roomTimer = setTimeout(stopRec, ROOM_SEC * 1000);
+}
+
+function stopRec() {
+  if (!recording) return;
+  recording = false; clearTimeout(roomTimer);
+  $("btnRec").textContent = "● 重錄"; $("btnRec").classList.remove("on");
+  let n = 0; for (const c of chunks) n += c.length;
+  const all = new Float32Array(n); let o = 0, pk = 0;
+  for (const c of chunks) { all.set(c, o); o += c.length; }
+  for (let i = 0; i < n; i++) { const a = Math.abs(all[i]); if (a > pk) pk = a; }
+  chunks = [];
+  const it = items[idx], dur = n / ctx.sampleRate;
+  const peakDb = pk > 0 ? 20 * Math.log10(pk) : -99;
+  let warn = "";
+  if (dur < 0.5) warn = "太短了，請重錄。";
+  else if (!it.room && pk >= 0.98) warn = "音量太大（爆音），請離麥克風遠一點後重錄。";
+  else if (!it.room && pk < 0.05) warn = "音量太小，請靠近麥克風或調高輸入音量後重錄。";
+  else if (it.room && pk > 0.1) warn = "環境音太大聲，請保持安靜後重錄。";
+  if (dur < 0.5) { delete recs[it.id]; }
+  else recs[it.id] = { wav: encodeWav(all, ctx.sampleRate), dur, peakDb: Math.round(peakDb * 10) / 10, warn: !!warn };
+  setMsg(warn || "已錄好 " + dur.toFixed(1) + " 秒。可以試聽，或直接下一句。", warn ? "warn" : "ok");
+  refreshButtons();
+}
+
+function setMsg(t, cls) { const m = $("msg"); m.textContent = t; m.className = "msg " + (cls || ""); }
+
+function refreshButtons() {
+  const has = !!recs[items[idx].id];
+  $("btnPlay").disabled = !has; $("btnNext").disabled = !has; $("btnPrev").disabled = idx === 0;
+  $("btnNext").textContent = idx === items.length - 1 ? "完成" : "下一句";
+  $("btnRec").textContent = has ? "● 重錄" : "● 開始錄";
+}
+
+function show() {
+  const it = items[idx];
+  $("sid").textContent = it.label; $("hint").textContent = it.hint ? "〔" + it.hint + "〕" : "";
+  $("text").textContent = it.text; $("text").style.whiteSpace = "pre-line";
+  $("prog").style.width = (idx / items.length * 100) + "%";
+  $("progTxt").textContent = "第 " + (idx + 1) + " 段，共 " + items.length + " 段";
+  $("who").textContent = stageName ? speaker + "（" + stageName + "）" : speaker; $("timer").textContent = recs[it.id] ? recs[it.id].dur.toFixed(1) + " 秒" : "0.0 秒";
+  setMsg(recs[it.id] ? "這一段已經錄過，可以試聽或重錄。" : "");
+  refreshButtons();
+}
+
+function play() {
+  const r = recs[items[idx].id]; if (!r || recording) return;
+  const p = $("player"); if (p.src) URL.revokeObjectURL(p.src);
+  p.src = URL.createObjectURL(new Blob([r.wav], { type: "audio/wav" })); p.play();
+}
+
+function next() {
+  if (recording || !recs[items[idx].id]) return;
+  if (idx < items.length - 1) { idx++; show(); } else finish();
+}
+
+function finish() {
+  $("scrRec").classList.add("hide"); $("scrDone").classList.remove("hide");
+  const tot = Object.values(recs).reduce((a, r) => a + r.dur, 0);
+  const bad = items.filter(i => recs[i.id] && recs[i.id].warn).map(i => i.label);
+  $("doneTxt").textContent = "共 " + Object.keys(recs).length + " 段，" + (tot / 60).toFixed(1) + " 分鐘。先按「下載錄音檔」取得一個 zip 檔，再依畫面指示上傳。"
+    + (bad.length ? "　以下幾段音量有問題，建議回去重錄：" + bad.join("、") : "");
+  $("sum").innerHTML = "<tr><th>段落</th><th>長度</th><th>最大音量</th><th></th></tr>" + items.map(i => { const r = recs[i.id];
+    return `<tr><td>${i.label}</td><td>${r ? r.dur.toFixed(1) + " 秒" : "未錄"}</td><td>${r ? r.peakDb + " dB" : ""}</td><td>${r && r.warn ? "建議重錄" : ""}</td></tr>`; }).join("");
+}
+
+// ---- 不壓縮的 zip ----
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xffffffff; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  const d = new Date(), dt = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate(), tm = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  for (const f of files) {
+    const nm = enc.encode(f.name), crc = crc32(f.data), h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, tm, true); h.setUint16(12, dt, true); h.setUint32(14, crc, true); h.setUint32(18, f.data.length, true); h.setUint32(22, f.data.length, true);
+    h.setUint16(26, nm.length, true); h.setUint16(28, 0, true);
+    parts.push(new Uint8Array(h.buffer), nm, f.data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, tm, true); c.setUint16(14, dt, true); c.setUint32(16, crc, true); c.setUint32(20, f.data.length, true); c.setUint32(24, f.data.length, true);
+    c.setUint16(28, nm.length, true); c.setUint32(42, off, true);
+    cen.push(new Uint8Array(c.buffer), nm);
+    off += 30 + nm.length + f.data.length;
+  }
+  let csize = 0; for (const p of cen) csize += p.length;
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...cen, new Uint8Array(e.buffer)], { type: "application/zip" });
+}
+
+function exportZip() {
+  const d = new Date(), p2 = n => String(n).padStart(2, "0");
+  const stamp = d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate());
+  const clean = t => t.replace(/[\\\/:*?"<>|\s]+/g, "_");
+  const safe = (clean(speaker) || "unnamed") + (stageName ? "_" + clean(stageName) : "");
+  const dir = safe + "_" + stamp, files = [];
+  const tr = stream.getAudioTracks()[0];
+  const manifest = { speaker, stageName, recordedAt: d.toISOString(), recorderVersion: VERSION, sampleRate: ctx.sampleRate, bitDepth: 16, channels: 1,
+    microphone: tr.label, trackSettings: tr.getSettings(), userAgent: navigator.userAgent, segments: [] };
+  for (const it of items) { const r = recs[it.id]; if (!r) continue;
+    files.push({ name: dir + "/" + it.id + ".wav", data: r.wav });
+    manifest.segments.push({ id: it.id, file: it.id + ".wav", text: it.room ? "" : it.text, seconds: Math.round(r.dur * 100) / 100, peakDb: r.peakDb, levelWarning: r.warn });
+  }
+  files.push({ name: dir + "/manifest.json", data: new TextEncoder().encode(JSON.stringify(manifest, null, 2)) });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(makeZip(files)); a.download = dir + ".zip";
+  document.body.appendChild(a); a.click(); a.remove();
+  $("doneMsg").textContent = "已下載 " + dir + ".zip（在「下載」資料夾）。上傳完成前不要關閉這個頁面。"; $("doneMsg").className = "msg ok";
+  $("upName").textContent = dir + ".zip"; $("upBox").classList.remove("hide");
+}
+
+// ---- 事件 ----
+$("btnMic").onclick = () => openMic().catch(e => { $("startMsg").textContent = "無法使用麥克風：" + e.message + "。請允許瀏覽器使用麥克風，或改用 Chrome／Edge。"; $("startMsg").className = "msg warn"; });
+$("mic").onchange = () => { if (stream) openMic(); };
+$("name").oninput = checkStart;
+$("btnStart").onclick = () => { speaker = $("name").value.trim(); stageName = $("stage").value.trim(); buildItems(speaker); idx = 0; $("scrStart").classList.add("hide"); $("scrRec").classList.remove("hide"); show(); };
+$("btnRec").onclick = () => recording ? stopRec() : startRec();
+$("btnPlay").onclick = play; $("btnNext").onclick = next;
+$("btnPrev").onclick = () => { if (!recording && idx > 0) { idx--; show(); } };
+$("btnExport").onclick = exportZip;
+$("btnBack").onclick = () => { $("scrDone").classList.add("hide"); $("scrRec").classList.remove("hide"); show(); };
+document.addEventListener("keydown", e => {
+  if ($("scrRec").classList.contains("hide")) return;
+  if (e.code === "Space") { e.preventDefault(); recording ? stopRec() : startRec(); }
+  else if (e.key === "Enter") { e.preventDefault(); next(); }
+  else if (e.key === "p" || e.key === "P") play();
+});
+document.addEventListener("keyup", e => { if (e.code === "Space" && !$("scrRec").classList.contains("hide")) e.preventDefault(); });
+document.addEventListener("click", e => { if (e.target.tagName === "BUTTON") e.target.blur(); });
+window.addEventListener("beforeunload", e => { if (Object.keys(recs).length) { e.preventDefault(); e.returnValue = ""; } });
+requestAnimationFrame(drawMeter);
+</script>
+</body>
+</html>
